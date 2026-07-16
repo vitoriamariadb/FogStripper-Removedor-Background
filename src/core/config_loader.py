@@ -12,6 +12,12 @@ if os.getenv("FOGSTRIPPER_DEV_MODE"):
 else:
     APP_DIR: str = os.path.expanduser("~/.local/share/fogstripper")
     CONFIG_PATH: str = os.path.join(APP_DIR, "config.json")
+    if not os.path.exists(CONFIG_PATH):
+        # Fallback para o config embarcado ao lado do codigo — e o caso do
+        # build Flatpak, que grava /app/src/config.json em vez de usar o HOME.
+        _bundled: str = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "config.json"))
+        if os.path.exists(_bundled):
+            CONFIG_PATH = _bundled
 
 PATHS: dict[str, Any] = {}
 
