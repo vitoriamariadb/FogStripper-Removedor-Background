@@ -55,6 +55,12 @@ jobs:
 
           TOOL_RE='laude|nthropic|opilot|emini|hatGPT|gpt-[0-9]|aider|ursor|indsurf|odeium|abnine|eepseek'
           NOREPLY_RE='noreply@(anthropic|openai|github)\.com'
+          # Montado por concatenacao de proposito: scrubbers de anonimato que
+          # removem linhas contendo o trailer literal (como o proprio hook
+          # pre-commit deste padrao anti-IA) destroem a condicional que o usa.
+          # Foi exatamente assim que o "if" deste check se perdeu no passado,
+          # deixando um "fi" orfao que quebrava o job em todo push/PR.
+          TRAILER_RE='Co-Autho''red-By'
 
           FAIL=0
           MAPFILE=$(git log --pretty=format:'%H' "$RANGE" 2>/dev/null || true)
@@ -70,6 +76,7 @@ jobs:
             COMMITTER_EMAIL=$(git log -1 --pretty=format:'%ce' "$SHA")
             SUBJECT=$(printf '%s\n' "$MSG" | head -1)
 
+            if printf '%s\n' "$MSG" | grep -qiE "${TRAILER_RE}:.*(($TOOL_RE)|($NOREPLY_RE))"; then
               echo "::error::commit $SHA tem trailer de coautoria com IA"
               FAIL=1
             fi
