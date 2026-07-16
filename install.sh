@@ -38,9 +38,20 @@ echo ">> Icones gerados."
 echo ""
 echo "[1/3] Configurando ambiente virtual unificado..."
 # Instalando PyTorch primeiro para garantir binarios
+# torch 2.5.1 / torchvision 0.20.1: primeira serie com wheels para Python 3.10-3.12
+# (os antigos 2.0.1/0.15.2 nao possuem wheels para o Python 3.12 de distros atuais).
+# O worker_upscale.py ja possui shim para torchvision.transforms.functional_tensor,
+# mantendo o basicsr/realesrgan funcionais com torchvision >= 0.17.
 echo ">> Instalando Core e PyTorch (isso ajuda a evitar compilacao desnecessaria)..."
-"$PYTHON_EXEC" -m pip install --no-cache-dir "torch==2.0.1" "torchvision==0.15.2" --index-url https://download.pytorch.org/whl/cu118 || \
-"$PYTHON_EXEC" -m pip install --no-cache-dir "torch==2.0.1" "torchvision==0.15.2" --index-url https://download.pytorch.org/whl/cpu
+if command -v nvidia-smi > /dev/null 2>&1 && nvidia-smi > /dev/null 2>&1; then
+    echo ">> GPU NVIDIA detectada. Instalando PyTorch com CUDA."
+    TORCH_INDEX="https://download.pytorch.org/whl/cu124"
+else
+    echo ">> Nenhuma GPU NVIDIA detectada. Instalando PyTorch CPU."
+    TORCH_INDEX="https://download.pytorch.org/whl/cpu"
+fi
+"$PYTHON_EXEC" -m pip install --no-cache-dir "torch==2.5.1" "torchvision==0.20.1" --index-url "$TORCH_INDEX" || \
+"$PYTHON_EXEC" -m pip install --no-cache-dir "torch==2.5.1" "torchvision==0.20.1" --index-url https://download.pytorch.org/whl/cpu
 
 echo ""
 echo "[2/3] Instalando demais dependencias (pode demorar um pouco)..."
@@ -94,8 +105,10 @@ Terminal=false
 StartupWMClass=$APP_WM_CLASS
 EOL
 
-update-desktop-database -q "$DESKTOP_INSTALL_DIR"
-gtk-update-icon-cache -q -f -t "$HOME/.local/share/icons/hicolor"
+# Atualiza caches de atalhos/icones quando as ferramentas existem (com set -e,
+# a ausencia delas em desktops como o COSMIC abortaria a instalacao ja concluida)
+command -v update-desktop-database > /dev/null && update-desktop-database -q "$DESKTOP_INSTALL_DIR" || true
+command -v gtk-update-icon-cache > /dev/null && gtk-update-icon-cache -q -f -t "$HOME/.local/share/icons/hicolor" || true
 
 # Limpeza
 rm -rf "$TMPDIR"

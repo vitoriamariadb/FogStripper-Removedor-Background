@@ -87,7 +87,7 @@ chmod +x install.sh
 
 O instalador:
 1. Cria o venv em `~/.local/share/fogstripper/venv/`
-2. Instala PyTorch 2.0.1 + torchvision 0.15.2 (GPU ou CPU)
+2. Instala PyTorch 2.5.1 + torchvision 0.20.1 (GPU ou CPU, com wheels para Python 3.10-3.12)
 3. Instala todas as demais dependencias
 4. Cria o atalho no menu de aplicativos
 
@@ -119,8 +119,8 @@ PYTHONPATH=~/.local/share/fogstripper \
 | PyQt6 | 6.10.0 | Interface grafica |
 | rembg | 2.0.60 | Remocao de fundo |
 | onnxruntime | 1.23.2 | Inferencia dos modelos |
-| torch | 2.0.1 | Backend do RealESRGAN |
-| torchvision | 0.15.2 | Auxiliar do torch |
+| torch | 2.5.1 | Backend do RealESRGAN |
+| torchvision | 0.20.1 | Auxiliar do torch |
 | basicsr | >=1.4.2 | Arquitetura RRDBNet |
 | realesrgan | >=0.3.0 | Upscaling |
 | Pillow | >=9.0.0 | Manipulacao de imagens |

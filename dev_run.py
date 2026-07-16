@@ -28,16 +28,16 @@ try:
     subprocess.run(["nvidia-smi"], capture_output=True, check=True)
     print(">> Detectada GPU NVIDIA. Usando CUDA.", flush=True)
     TORCH_PACKAGES = [
-        "torch==2.0.1",
-        "torchvision==0.15.2",
+        "torch==2.5.1",
+        "torchvision==0.20.1",
         "--index-url",
-        "https://download.pytorch.org/whl/cu118",
+        "https://download.pytorch.org/whl/cu124",
     ]
 except (subprocess.CalledProcessError, FileNotFoundError):
     print(">> Nenhuma GPU NVIDIA detectada. Usando CPU.", flush=True)
     TORCH_PACKAGES = [
-        "torch==2.0.1",
-        "torchvision==0.15.2",
+        "torch==2.5.1",
+        "torchvision==0.20.1",
         "--index-url",
         "https://download.pytorch.org/whl/cpu",
     ]
@@ -65,12 +65,17 @@ except (subprocess.CalledProcessError, FileNotFoundError):
     print("=" * 60, flush=True)
     print(flush=True)
 
-    print("[1/2] Atualizando pip...", flush=True)
+    print("[1/3] Atualizando pip...", flush=True)
     run_pip_install(python_executable, ["--upgrade", "pip"])
 
     print(flush=True)
-    print("[2/2] Instalando todas as dependencias do projeto...", flush=True)
-    # Using the unified requirements.txt which includes rembg, torch, realesrgan etc.
+    print("[2/3] Instalando PyTorch...", flush=True)
+    # torch/torchvision vem do indice proprio do PyTorch (CUDA ou CPU) e precisam
+    # ser instalados antes do requirements.txt, que nao os inclui de proposito.
+    run_pip_install(python_executable, TORCH_PACKAGES)
+
+    print(flush=True)
+    print("[3/3] Instalando todas as demais dependencias do projeto...", flush=True)
     run_pip_install(python_executable, ["-r", "requirements.txt"])
 
     print(flush=True)
