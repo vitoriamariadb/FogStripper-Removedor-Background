@@ -208,7 +208,9 @@ class ProcessThread(QThread):
             bg_type = self.post_processing_opts.get("background_type")
             bg_data = self.post_processing_opts.get("background_data")
             if bg_type and bg_data:
-                bg_output: str = os.path.join(self.temp_dir, f"4_background{self.output_format}")
+                # Intermediario sempre em PNG: o worker salva via PIL, que nao
+                # sabe escrever SVG; a conversao para o formato final ocorre adiante.
+                bg_output: str = os.path.join(self.temp_dir, "4_background.png")
                 if not self._run_background(step_path, bg_output):
                     raise RuntimeError("Falha ao aplicar fundo.")
                 step_path = bg_output
@@ -222,7 +224,13 @@ class ProcessThread(QThread):
                 logger.warning("SVG falhou, salvando como PNG.")
                 final_output_path = os.path.splitext(final_output_path)[0] + ".png"
 
-        shutil.move(step_path, final_output_path)
+        if final_output_path.lower().endswith(".png"):
+            shutil.move(step_path, final_output_path)
+        else:
+            # Os intermediarios sao sempre PNG; converte de fato para o formato
+            # escolhido (antes o PNG era apenas renomeado para .webp/.gif).
+            with Image.open(step_path) as img:
+                img.save(final_output_path)
         self.progress.emit(100)
         return final_output_path
 
@@ -232,7 +240,9 @@ class ProcessThread(QThread):
         reader = imageio.get_reader(current_path)
         try:
             meta: dict[str, Any] = reader.get_meta_data()
-            fps: float = meta.get("fps") or (1000 / meta.get("duration", 100))
+            # duration pode vir ausente, None ou 0 (GIFs sem timing valido);
+            # nesses casos assume 100ms/quadro em vez de estourar divisao.
+            fps: float = meta.get("fps") or (1000 / (meta.get("duration") or 100))
             frames: list[np.ndarray] = list(reader)
         finally:
             reader.close()
@@ -259,7 +269,16 @@ class ProcessThread(QThread):
             output_dir: str = os.path.splitext(final_output_path)[0]
             os.makedirs(output_dir, exist_ok=True)
             for i, pf in enumerate(processed_frames):
-                pf.save(os.path.join(output_dir, f"frame_{i:04d}{self.output_format}"))
+                frame_out: str = os.path.join(output_dir, f"frame_{i:04d}{self.output_format}")
+                if self.output_format == ".svg":
+                    # PIL nao escreve SVG: salva o quadro em PNG e vetoriza.
+                    svg_src: str = os.path.join(self.temp_dir, f"svg_src_{i:04d}.png")
+                    pf.save(svg_src)
+                    if not svg_utils.raster_to_svg(svg_src, frame_out):
+                        logger.warning(f"SVG falhou no quadro {i}, salvando como PNG.")
+                        pf.save(os.path.splitext(frame_out)[0] + ".png")
+                else:
+                    pf.save(frame_out)
             self.progress.emit(100)
             return output_dir
 
@@ -267,6 +286,14 @@ class ProcessThread(QThread):
         if final_output_path.lower().endswith(".webm"):
             imageio.mimsave(
                 final_output_path, np_frames, fps=fps, codec="libvpx-vp9", pixelformat="yuva420p", quality=8
+            )
+        elif final_output_path.lower().endswith(".webp"):
+            # WEBP animado direto pelo PIL: o ramo GIF usa kwargs (disposal)
+            # que o writer WEBP nao aceita.
+            duration_ms: int = max(1, int(1000 / fps)) if fps else 100
+            first_frame, *rest_frames = processed_frames
+            first_frame.save(
+                final_output_path, save_all=True, append_images=rest_frames, duration=duration_ms, loop=0
             )
         else:
             imageio.mimsave(final_output_path, np_frames, fps=fps, loop=0, disposal=2)
