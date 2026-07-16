@@ -26,7 +26,9 @@ def main() -> None:
 
     try:
         erode_size: int = 5 + int((args.potencia / 100) * 35)
-        bg_threshold: int = 15 - int((args.potencia / 100) * 20)
+        # Clamp em 0: com potencia > 75 a formula ficaria negativa, o que e
+        # invalido como threshold de alpha matting (faixa esperada: 0-255).
+        bg_threshold: int = max(0, 15 - int((args.potencia / 100) * 20))
 
         session = new_session(args.model)
         with Image.open(args.input) as img:
